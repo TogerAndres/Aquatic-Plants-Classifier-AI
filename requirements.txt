@@ -1,0 +1,26 @@
+# ── Deep Learning ──────────────────────────────────────────────
+tensorflow==2.16.1
+
+# ── Datos y cómputo numérico ───────────────────────────────────
+numpy==1.26.4
+pandas==2.2.2
+scikit-learn==1.4.2
+
+# ── Visualización ───────────────────────────────────────────────
+matplotlib==3.8.4
+seaborn==0.13.2
+
+# ── Procesamiento de imágenes ────────────────────────────────────
+opencv-python-headless==4.9.0.80
+Pillow==10.3.0
+
+# ── API ───────────────────────────────────────────────────────
+flask==3.0.3
+flask-cors==4.0.1
+gunicorn==22.0.0
+
+# ── Notas ─────────────────────────────────────────────────────
+# - Para entrenar con GPU instala el build de TensorFlow con soporte CUDA
+#   correspondiente a tu sistema (ver https://www.tensorflow.org/install/gpu).
+# - opencv-python-headless se usa en vez de opencv-python porque la API
+#   corre en servidor (sin GUI) y headless evita conflictos con Tkinter/Qt.
