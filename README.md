@@ -1,134 +1,100 @@
 # 🌿 Aquatic Plants Classifier
 
-Clasificador de especies de plantas acuáticas con **transfer learning
-(EfficientNetB0)**, **validación cruzada estratificada (5 folds)** para
-una estimación de precisión confiable, y **explicabilidad vía Grad-CAM**
-— cada predicción viene acompañada del mapa de calor que muestra
-exactamente en qué parte de la imagen se fijó el modelo para decidir.
+An explainable deep learning classifier for aquatic plant species, built with **transfer learning (EfficientNetB0)**, **stratified k-fold cross-validation** for reliable accuracy estimation, and **Grad-CAM explainability** — every prediction comes with a heatmap showing exactly which part of the image the model focused on to make its decision.
 
-Incluye una API REST (Flask) y un frontend moderno (React + Vite) para
-probar el modelo subiendo una foto desde el navegador.
+Includes a REST API (Flask) and a modern frontend (React + Vite) to test the model by uploading photos directly from the browser.
 
-![status](https://img.shields.io/badge/estado-entrenado-7C5CFC)
+![status](https://img.shields.io/badge/status-trained-7C5CFC)
 ![python](https://img.shields.io/badge/python-3.10%2B-2DD4BF)
 ![tensorflow](https://img.shields.io/badge/tensorflow-2.16-FF6F00)
-![license](https://img.shields.io/badge/licencia-MIT-blue)
+![license](https://img.shields.io/badge/license-MIT-blue)
 
 ---
 
-## 📸 Vista previa
+## 📸 Screenshots
 
-| Pantalla principal | Predicción + explicabilidad Grad-CAM |
+| Upload screen | Prediction + Grad-CAM explainability |
 |---|---|
-| ![Pantalla principal](docs/screenshots/app-home.png) | ![Demo Grad-CAM](docs/screenshots/gradcam-demo.png) |
+| ![Upload screen](docs/screenshots/app-home.png) | ![Grad-CAM demo](docs/screenshots/gradcam-demo.png) |
 
-El slider central en la segunda captura es la **"lente de
-explicabilidad"**: se desliza sobre la foto original para revelar el
-mapa de calor Grad-CAM superpuesto, mostrando en qué hojas o
-estructuras de la planta se fijó el modelo.
+The center slider in the second screenshot is the **"explainability lens"**: drag it across the original photo to reveal the Grad-CAM heatmap overlay, showing which leaves or plant structures the model attended to when making its decision.
 
-## 🧠 Especies que reconoce
+---
 
-| Especie | Nombre científico |
+## 🧠 Species Recognized
+
+| Common Name | Scientific Name |
 |---|---|
 | Common Duckweed | *Lemna minor* |
 | Common Water Hyacinth | *Eichornia crassipes* |
 | Heartleaf False Pickerelweed | *Monochoria korsakowii* |
 | Water Lettuce | *Pistia stratiotes* |
 
-## ✨ Características
+---
 
-- **EfficientNetB0** como backbone por defecto, intercambiable por
-  `EfficientNetB1`, `ResNet50V2` o `MobileNetV3Large` sin tocar el resto
-  del pipeline (ver [`src/training/config.py`](src/training/config.py)).
-- **Validación cruzada estratificada (K-Fold)**: el modelo se entrena y
-  evalúa 5 veces sobre particiones balanceadas por clase, y se reporta
-  media ± desviación estándar, no un único número optimista.
-- **Pesos de clase automáticos** para que el modelo no favorezca a la
-  especie con más fotos en el dataset.
-- **Explicabilidad real**: cada predicción de la API trae su heatmap
-  Grad-CAM y una explicación en texto plano de en qué región se fijó el
-  modelo y con qué nivel de confianza.
-- **Frontend con "lente de explicabilidad"**: el slider comparador que
-  se ve arriba.
+## ✨ Key Features
 
-## 📊 Resultados del entrenamiento
+- **Swappable backbone**: EfficientNetB0 by default, switchable to `EfficientNetB1`, `ResNet50V2`, or `MobileNetV3Large` with a single CLI flag — the data pipeline and classifier head stay identical, making architecture comparisons fair (see [`src/training/config.py`](src/training/config.py)).
+- **Stratified K-Fold cross-validation**: the model is trained and evaluated K times on class-balanced partitions. Results are reported as mean ± standard deviation, not a single optimistic number from a fixed split.
+- **Automatic class weights**: compensates for class imbalance so the model doesn't favor the most common species during training.
+- **Real explainability**: every API prediction includes a Grad-CAM heatmap (base64 PNG, ready to render) and a plain-text explanation of which image region the model focused on and with what confidence level.
+- **Explainability lens UI**: the before/after slider shown above — not a side image, but a live reveal inside the original photo.
 
-Entrenamiento de 4 épocas por fase (2 con el backbone congelado, 2 de
-fine-tuning) sobre 5 folds estratificados, seguido de un reentrenamiento
-final con el 100% del dataset.
+---
 
-![Curvas de entrenamiento](docs/screenshots/training-curves.png)
+## 📊 Training Results
 
-| Métrica (validación cruzada, 5 folds) | Media ± desv. estándar |
+Training ran for 4 epochs per phase (2 with the backbone frozen, 2 of fine-tuning) over 5 stratified folds, followed by a final retraining run on 100% of the dataset.
+
+![Training curves](docs/screenshots/training-curves.png)
+
+### Cross-Validation Summary (5 folds)
+
+| Metric | Mean ± Std Dev |
 |---|---|
 | Accuracy | 0.9993 ± 0.0010 |
 | AUC | 1.0000 ± 0.0000 |
 
-| Modelo final (100% del dataset) | Valor |
+### Final Model (trained on 100% of the dataset)
+
+| Metric | Value |
 |---|---|
 | Train Loss | 0.8432 |
 | Train Accuracy | 98.09% |
 
-**Lectura de las curvas:**
+### Reading the curves
 
-- **Transfer learning efectivo**: ya en la primera época de cabeza
-  (`Head E1`) la accuracy de validación supera el 98% en los 5 folds,
-  confirmando que las features de `EfficientNetB0` preentrenado en
-  ImageNet transfieren bien a estas 4 especies.
-- **Fine-tuning estable**: al descongelar el backbone (`FT E1`–`FT E2`)
-  el loss baja de forma monótona (de ~1.7 a ~0.84) sin picos ni
-  divergencia, gracias al learning rate bajo (`1e-5`) usado en esa fase.
-- **Folds consistentes**: las líneas finas de fondo (cada fold
-  individual) están muy juntas entre sí, lo que indica que el resultado
-  no depende de qué imágenes cayeron en cada partición.
+- **Transfer learning kicks in immediately**: by the very first head-training epoch (`Head E1`), validation accuracy already exceeds 98% across all 5 folds — confirming that EfficientNetB0's ImageNet features transfer strongly to these 4 aquatic species.
+- **Stable fine-tuning**: unlocking the full backbone (`FT E1`–`FT E2`) reduces loss monotonically from ~1.7 to ~0.84 with no spikes or divergence, thanks to the low learning rate (`1e-5`) used in that phase.
+- **Consistent folds**: the thin background lines (one per fold) cluster tightly, meaning the result doesn't depend on which images happened to fall in each partition.
 
-### ⚠️ Nota técnica honesta sobre estos números
+### ⚠️ Honest note on these numbers
 
-Una accuracy de validación de ~99.9% y AUC de 1.0 en los 5 folds, con
-solo 4 épocas por fase, es un resultado **inusualmente alto** para un
-problema de 4 clases — incluso con transfer learning. Antes de
-presentar este modelo como definitivo conviene descartar la causa más
-común de un número así de optimista:
+A validation accuracy of ~99.9% and AUC of 1.0 across 5 folds, in just 4 epochs per phase, is unusually high — even for transfer learning on 4 classes. Before presenting this model as production-ready, the most common cause of this pattern should be ruled out:
 
-> **Fuga de datos entre train y validación.** Si el dataset que se usó
-> para entrenar es la carpeta *ya aumentada* (`Augmented Images`) y el
-> split de K-Fold se hizo a nivel de archivo individual en vez de a
-> nivel de foto original, es muy probable que varias copias aumentadas
-> de la **misma foto fuente** hayan quedado repartidas entre el set de
-> entrenamiento y el de validación de un mismo fold. El modelo no
-> estaría generalizando a plantas nuevas; estaría reconociendo
-> variaciones de fotos que ya "vio" en otra forma durante el
-> entrenamiento.
+> **Data leakage between augmented copies.** If the dataset used is the pre-augmented folder (`Augmented Images`) and the K-Fold split was done at the file level rather than at the original photo level, it is very likely that multiple augmented copies of the **same source photo** ended up split across the train and validation sets of the same fold. The model would then be recognizing variations of images it effectively saw during training — not generalizing to truly new plants.
 
-Esto no invalida el pipeline ni el trabajo hecho — el código de K-Fold,
-class weights y Grad-CAM es correcto — pero sí significa que el número
-exacto (99.9%) probablemente no sobreviva a fotos genuinamente nuevas.
-Antes de publicar este resultado como definitivo en el repositorio,
-recomiendo:
+This does not invalidate the pipeline or the code — the K-Fold, class weights, and Grad-CAM logic are all correct — but it does mean the exact number (99.9%) likely won't survive truly new photos. To verify:
 
-1. Agrupar las imágenes por foto original (no por archivo aumentado)
-   antes de hacer el split, usando `StratifiedGroupKFold` de
-   scikit-learn en vez de `StratifiedKFold`.
-2. Evaluar contra un **holdout externo**: fotos que no pasaron por el
-   proceso de aumentación en absoluto (ver
-   [`docs/DATASET.md`](docs/DATASET.md)).
+1. Group images by original photo before splitting, using `StratifiedGroupKFold` from scikit-learn instead of `StratifiedKFold`.
+2. Evaluate against an **external holdout**: photos that never went through the augmentation process at all (see [`docs/DATASET.md`](docs/DATASET.md)).
 
-Si después de ese ajuste la accuracy se mantiene muy alta, genial — pero
-así sabrás que el número es real y no un artefacto del split.
+If accuracy stays high after those adjustments, the result is real and the model is genuinely robust.
 
-## 🗂️ Estructura del repositorio
+---
+
+## 🗂️ Repository Structure
 
 ```
 .
 ├── src/
-│   ├── training/        # config, dataset, arquitectura, entrenamiento K-Fold
-│   ├── inference/        # predictor de alto nivel + Grad-CAM
-│   ├── api/               # API Flask (/api/predict, /api/classes, /api/health)
-│   └── utils/             # semillas, métricas, gráficas
-├── frontend/              # React + Vite — interfaz de carga y resultados
+│   ├── training/        # config, dataset pipeline, model factory, K-Fold training
+│   ├── inference/       # high-level predictor + Grad-CAM engine
+│   ├── api/             # Flask REST API (/api/predict, /api/classes, /api/health)
+│   └── utils/           # global seed, metrics, plotting utilities
+├── frontend/            # React + Vite — upload UI, results panel, explainability lens
 ├── docs/
-│   ├── screenshots/       # capturas usadas en este README
+│   ├── screenshots/     # images used in this README
 │   ├── ARCHITECTURE.md
 │   ├── DATASET.md
 │   ├── TRAINING.md
@@ -137,54 +103,54 @@ así sabrás que el número es real y no un artefacto del split.
 └── README.md
 ```
 
-Ver [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) para el detalle de cada módulo.
+See [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) for a detailed breakdown of each module and the key design decisions behind them.
 
-## 🚀 Inicio rápido
+---
 
-### 1. Backend — entrenar el modelo
+## 🚀 Quick Start
+
+### 1. Install dependencies
 
 ```bash
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-Descarga el [Aquatic Plants Image Dataset](https://data.mendeley.com/datasets/vz6z64nwby/1)
-(Mendeley Data) y coloca la carpeta de imágenes aumentadas en `./data/Augmented Images`,
-o exporta la ruta:
+### 2. Prepare the dataset
+
+Download the [Aquatic Plants Image Dataset](https://data.mendeley.com/datasets/vz6z64nwby/1)
+from Mendeley Data and place the augmented images folder at `./data/Augmented Images`,
+or set the path via environment variable:
 
 ```bash
-export AQUATIC_DATASET_DIR="/ruta/a/Augmented Images"
+export AQUATIC_DATASET_DIR="/path/to/Augmented Images"
 ```
 
-Entrena con validación cruzada de 5 folds:
+### 3. Train with cross-validation
 
 ```bash
 python -m src.training.train --backbone efficientnetb0 --folds 5
 ```
 
-Esto deja en `artifacts/`:
-- `folds/fold_N/best.keras` — mejor checkpoint de cada fold
-- `reports/cross_validation_summary.json` — métricas promedio ± desviación
-- `final_model/model.keras` — modelo final reentrenado con todo el dataset
+This writes to `artifacts/`:
+- `folds/fold_N/best.keras` — best checkpoint per fold
+- `reports/cross_validation_summary.json` — mean ± std metrics across folds
+- `final_model/model.keras` — production model retrained on the full dataset
 
-Ver guía completa en [`docs/TRAINING.md`](docs/TRAINING.md).
+See the full guide in [`docs/TRAINING.md`](docs/TRAINING.md).
 
-> Los pesos entrenados (`*.keras`) no se incluyen en este repositorio
-> por tamaño — quedan excluidos vía `.gitignore`. Sube el dataset y
-> reentrena localmente, o publica los pesos por separado (Releases de
-> GitHub, Hugging Face, etc.) si quieres distribuir el modelo ya
-> entrenado.
+> Trained weights (`*.keras`) are excluded from this repository via `.gitignore` due to file size. Retrain locally using the dataset above, or publish weights separately (GitHub Releases, Hugging Face Hub, etc.) if you want to distribute a pre-trained model.
 
-### 2. Backend — levantar la API
+### 4. Run the API
 
 ```bash
 export AQUATIC_MODEL_DIR=./artifacts/final_model
 python -m src.api.app
 ```
 
-La API queda en `http://localhost:5000`. Detalle de endpoints en [`docs/API.md`](docs/API.md).
+API runs at `http://localhost:5000`. Full endpoint reference in [`docs/API.md`](docs/API.md).
 
-### 3. Frontend
+### 5. Run the frontend
 
 ```bash
 cd frontend
@@ -192,42 +158,44 @@ npm install
 npm run dev
 ```
 
-Abre `http://localhost:5173`. En desarrollo, Vite redirige `/api/*` hacia
-el backend en el puerto 5000 (ver `frontend/vite.config.js`).
+Open `http://localhost:5173`. In development mode, Vite proxies `/api/*` to the Flask backend on port 5000 (see `frontend/vite.config.js`) — no CORS issues.
 
-## 📊 Por qué validación cruzada y no un solo split
+---
 
-Con un dataset de tamaño moderado y solo 4 clases, un único split
-train/val fijo puede dar una precisión que es más fruto del azar (qué
-imágenes cayeron de cada lado) que del modelo en sí. K-Fold estratificado
-entrena K modelos sobre particiones distintas —todas con la misma
-proporción de cada especie— y promedia el resultado.
+## 💡 Design Decisions
 
-## 🔍 Por qué explicabilidad (Grad-CAM)
+### Why cross-validation instead of a single train/val split?
 
-Un clasificador de especies que solo da un porcentaje es una caja negra:
-no hay forma de saber si aprendió a reconocer la planta o, por ejemplo,
-el color del agua de fondo en las fotos de entrenamiento. Grad-CAM
-calcula el gradiente de la clase predicha respecto a la última capa
-convolucional del backbone, lo que da un mapa de qué regiones de la
-imagen más influyeron en la decisión. Esto se expone tanto en la API
-(`gradcam_overlay_base64`) como en el frontend (slider comparador, ver
-captura arriba).
+With a moderately sized dataset and only 4 classes, a fixed split can produce an accuracy that reflects luck (which images landed where) more than model quality. Stratified K-Fold trains K models on different, class-balanced partitions and averages the result. The standard deviation across folds is in practice more informative than the mean: a high std signals instability or insufficient data for some class.
+
+### Why Grad-CAM for explainability?
+
+A species classifier that only outputs a confidence score is a black box — there is no way to know whether it learned to recognize the plant or the water color in the background of the training photos. Grad-CAM computes the gradient of the predicted class with respect to the last convolutional layer of the backbone, producing a map of which image regions most influenced the decision. This is exposed in both the API (`gradcam_overlay_base64`) and the frontend (the before/after slider visible in the screenshot above).
+
+### Why freeze BatchNorm during fine-tuning?
+
+Keeping `BatchNormalization` layers frozen during the fine-tuning phase prevents their running statistics from drifting with the small batch sizes typical of fine-tuning — a common cause of a model that was performing well suddenly degrading after backbone unfreezing.
+
+---
 
 ## 🛣️ Roadmap
 
-- [ ] Agrupar por foto original al hacer K-Fold (`StratifiedGroupKFold`)
-      para eliminar la fuga de datos entre augmentaciones de la misma foto.
-- [ ] Holdout externo (fotos propias, no del dataset de Mendeley) para
-      una evaluación final menos optimista que la validación cruzada.
-- [ ] Ensamble de los K modelos de los folds en vez de un solo modelo final.
-- [ ] Métricas de calibración (reliability diagram) además de accuracy.
-- [ ] Dockerfile para desplegar API + frontend juntos.
+- [ ] Switch to `StratifiedGroupKFold` (group by original photo) to eliminate data leakage from augmented copies.
+- [ ] External holdout evaluation with photos not part of the augmentation pipeline.
+- [ ] Fold ensemble: combine the K fold models at inference time instead of retraining from scratch.
+- [ ] Calibration metrics (reliability diagram) in addition to accuracy and AUC.
+- [ ] Docker Compose setup to deploy API + frontend together.
 
-## 📄 Licencia
+---
 
-MIT — ver [`LICENSE`](LICENSE).
+## 📄 License
+
+MIT — see [`LICENSE`](LICENSE).
 
 ## 🙏 Dataset
 
-[Aquatic Plants Image Dataset](https://data.mendeley.com/datasets/vz6z64nwby/1), Mendeley Data.
+[Aquatic Plants Image Dataset](https://data.mendeley.com/datasets/vz6z64nwby/1) — Mendeley Data.
+
+## 👨‍💻 Author
+
+**Roger Andrés Álvarez Díaz** · [@TogerAndres](https://github.com/TogerAndres) · [LinkedIn](https://linkedin.com/in/roger-andrés-alvarez-diaz-52b395333)
